@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Framtidskassan – Caseworker Dashboard</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <style>
+    /* ── FK Cordillas Design System Exact Match ───────────────────────── */
+    :root {
+      /* Official Försäkringskassan Brand Colors */
+      --fk-primary:       #007A3E; /* Fun Green */
+      --fk-primary-dark:  #005C2E;
+      --fk-primary-light: #E6F2EC;
+      --fk-secondary:     #1B1E23; /* Dark text */
+      
+      /* Grays */
+      --fk-grey-50:       #FAFAFA;
+      --fk-grey-100:      #F4F4F4;
+      --fk-grey-200:      #E8E8E8;
+      --fk-grey-300:      #D1D1D1;
+      --fk-grey-500:      #767676;
+      --fk-grey-700:      #4D4D4D;
+      --fk-grey-900:      var(--fk-secondary);
+      --fk-white:         #FFFFFF;
+
+      /* Status Colors */
+      --fk-orange:        #E07000;
+      --fk-orange-light:  #FFF4E5;
+      --fk-red:           #D22D2D;
+      --fk-red-light:     #FAEAEA;
+      --fk-yellow:        #856404;
+      --fk-yellow-light:  #FFF8E1;
+      
+      /* Structure */
+      --fk-radius:        4px;
+      --fk-radius-lg:     8px; 
+      --fk-shadow-sm:     0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03); 
+      
+      /* FK Typography */
+      --fk-font:          Arial, Helvetica, sans-serif;
+    }
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--fk-font);
+      background: var(--fk-grey-100);
+      min-height: 100vh;
+      color: var(--fk-grey-900);
+      font-size: 15px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Header ──────────────────────────────────────────────── */
+    .fk-header {
+      background: var(--fk-primary);
+      color: var(--fk-white);
+      height: 72px; 
+      display: flex;
+      align-items: center;
+      padding: 0 32px;
+      gap: 16px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .fk-logo-mark {
+      width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .fk-logo-mark svg { display: block; width: 100%; height: 100%; }
+    .fk-header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+    .fk-header-sep { width: 1px; height: 28px; background: rgba(255,255,255,0.25); margin: 0 8px; }
+    .fk-header span { font-size: 15px; color: rgba(255, 255, 255, 0.9); font-weight: 400; }
+    .prototype-badge {
+      margin-left: auto;
+      background: var(--fk-orange);
+      color: var(--fk-white); 
+      font-size: 12px; font-weight: 700;
+      padding: 6px 14px; border-radius: 20px;
+      letter-spacing: 0.5px; text-transform: uppercase;
+    }
+
+    /* ── Layout ──────────────────────────────────────────────── */
+    .fk-layout { display: flex; height: calc(100vh - 72px); }
+
+    /* ── Sidebar ─────────────────────────────────────────────── */
+    .fk-sidebar {
+      width: 320px;
+      background: var(--fk-white);
+      border-right: 1px solid var(--fk-grey-200);
+      display: flex; flex-direction: column;
+      flex-shrink: 0;
+      box-shadow: 2px 0 8px rgba(0,0,0,0.02);
+      z-index: 10;
+    }
+    .fk-sidebar-header {
+      padding: 24px;
+      border-bottom: 1px solid var(--fk-grey-200);
+      display: flex; justify-content: space-between; align-items: center;
+      background: var(--fk-white);
+    }
+    .fk-sidebar-header h2 { font-size: 12px; font-weight: 700; color: var(--fk-grey-500); text-transform: uppercase; letter-spacing: 0.5px; }
+    .fk-refresh-btn {
+      background: transparent;
+      border: 1px solid var(--fk-grey-300);
+      color: var(--fk-grey-700);
+      padding: 6px 12px;
+      border-radius: var(--fk-radius);
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .fk-refresh-btn:hover { background: var(--fk-grey-50); border-color: var(--fk-grey-500); color: var(--fk-grey-900); }
+
+    .fk-app-list { flex: 1; overflow-y: auto; }
+    .fk-app-item {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--fk-grey-100);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border-left: 4px solid transparent;
+      background: var(--fk-white);
+    }
+    .fk-app-item:hover { background: var(--fk-grey-50); }
+    .fk-app-item.selected { background: var(--fk-primary-light); border-left-color: var(--fk-primary); }
+    .fk-app-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .fk-app-name { font-size: 15px; font-weight: 700; color: var(--fk-grey-900); }
+    .fk-app-time { font-size: 12px; color: var(--fk-grey-500); font-weight: 400; }
+    .fk-app-pnr { font-size: 13px; color: var(--fk-grey-500); margin-bottom: 12px; }
+    .fk-app-meta { display: flex; gap: 8px; align-items: center; }
+
+    .fk-badge {
+      display: inline-block; font-size: 11px; font-weight: 700;
+      padding: 4px 10px; border-radius: 12px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .fk-badge.pending  { background: var(--fk-yellow-light); color: var(--fk-yellow); border: 1px solid #F3E5AB; }
+    .fk-badge.approved { background: var(--fk-green-light); color: var(--fk-primary-dark); border: 1px solid var(--fk-primary-mid); }
+    .fk-badge.rejected { background: var(--fk-red-light); color: var(--fk-red); border: 1px solid #F5C6C6; }
+
+    .fk-benefit-tag {
+      font-size: 11px; font-weight: 600;
+      padding: 4px 8px; border-radius: var(--fk-radius);
+      background: var(--fk-grey-100); color: var(--fk-grey-700);
+    }
+
+    /* ── Main content ────────────────────────────────────────── */
+    .fk-main { flex: 1; overflow-y: auto; padding: 32px 40px; display: flex; flex-direction: column; gap: 24px; }
+    .fk-empty {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 16px; color: var(--fk-grey-500); font-size: 16px;
+    }
+    .fk-empty svg { opacity: 0.2; width: 64px; height: 64px; }
+
+    /* ── Cards ───────────────────────────────────────────────── */
+    .fk-card {
+      background: var(--fk-white);
+      border-radius: var(--fk-radius-lg);
+      border: 1px solid var(--fk-grey-200);
+      padding: 32px;
+      box-shadow: var(--fk-shadow-sm);
+    }
+    .fk-card-title {
+      font-size: 12px; font-weight: 700;
+      color: var(--fk-grey-500);
+      text-transform: uppercase; letter-spacing: 0.5px;
+      margin-bottom: 24px; padding-bottom: 12px;
+      border-bottom: 1px solid var(--fk-grey-200);
+    }
+
+    /* ── Info grid ───────────────────────────────────────────── */
+    .fk-info-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px 16px; }
+    .fk-info-item label {
+      display: block; font-size: 12px; color: var(--fk-grey-500);
+      margin-bottom: 6px; font-weight: 400; 
+    }
+    .fk-info-item span { display: block; font-size: 15px; color: var(--fk-grey-900); font-weight: 700; line-height: 1.4; }
+
+    /* ── Chat log ────────────────────────────────────────────── */
+    .fk-chat-log {
+      display: flex; flex-direction: column; gap: 16px;
+      max-height: 480px; overflow-y: auto; padding-right: 8px;
+    }
+    .fk-chat-log::-webkit-scrollbar { width: 6px; }
+    .fk-chat-log::-webkit-scrollbar-track { background: transparent; }
+    .fk-chat-log::-webkit-scrollbar-thumb { background: var(--fk-grey-300); border-radius: 10px; }
+
+    .fk-chat-msg { display: flex; gap: 16px; max-width: 85%; }
+    .fk-chat-msg.agent { align-self: flex-start; }
+    .fk-chat-msg.user  { align-self: flex-end; flex-direction: row-reverse; }
+    .fk-chat-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700; flex-shrink: 0;
+      background: var(--fk-grey-100); color: var(--fk-grey-700);
+      border: 1px solid var(--fk-grey-200);
+    }
+    .fk-chat-msg.agent .fk-chat-avatar { background: var(--fk-primary-light); color: var(--fk-primary-dark); border-color: var(--fk-primary-light); }
+    
+    .fk-chat-bubble {
+      padding: 16px 20px; border-radius: var(--fk-radius-lg);
+      font-size: 14px; line-height: 1.6; white-space: normal;
+      background: var(--fk-grey-50); border: 1px solid var(--fk-grey-200);
+      color: var(--fk-grey-900);
+    }
+    .fk-chat-bubble p { margin-bottom: 12px; }
+    .fk-chat-bubble p:last-child { margin-bottom: 0; }
+    .fk-chat-bubble ul, .fk-chat-bubble ol { margin-left: 24px; margin-bottom: 12px; }
+    .fk-chat-msg.user  .fk-chat-bubble { 
+      background: var(--fk-primary-light); 
+      border-color: var(--fk-primary-light); 
+      color: var(--fk-primary-dark);
+      white-space: pre-wrap; 
+    }
+
+    /* ── Documents ───────────────────────────────────────────── */
+    .fk-docs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .fk-doc-card { 
+      border-radius: var(--fk-radius-lg); padding: 24px; 
+      border: 1px solid var(--fk-grey-200); background: var(--fk-grey-50); 
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .fk-doc-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .fk-doc-type { font-size: 13px; font-weight: 700; color: var(--fk-grey-900); }
+    .fk-doc-row { display: flex; flex-direction: column; gap: 4px; font-size: 14px; margin-bottom: 4px; }
+    .fk-doc-label { font-size: 12px; color: var(--fk-grey-500); }
+    .fk-doc-val { font-weight: 600; color: var(--fk-grey-900); }
+    
+    .fk-doc-status { 
+      margin-top: 8px; font-size: 12px; font-weight: 700; 
+      padding: 8px 12px; border-radius: var(--fk-radius); 
+      background: var(--fk-white); border: 1px solid var(--fk-grey-200);
+      color: var(--fk-primary-dark); display: inline-flex; align-items: center; gap: 6px;
+    }
+    .fk-doc-status::before { content: "✓"; color: var(--fk-primary); font-weight: 900; }
+
+    .fk-no-doc { 
+      background: var(--fk-grey-50); border: 1px dashed var(--fk-grey-300); 
+      color: var(--fk-grey-500); font-size: 14px; 
+      display: flex; align-items: center; justify-content: center; 
+      min-height: 120px; border-radius: var(--fk-radius-lg); 
+    }
+    .fk-doc-actions { margin-top: 16px; display: flex; gap: 12px; }
+    .fk-doc-btn { 
+      background: var(--fk-white); border: 1px solid var(--fk-grey-300); 
+      color: var(--fk-grey-900); padding: 8px 16px; border-radius: var(--fk-radius); 
+      font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; 
+    }
+    .fk-doc-btn:hover { border-color: var(--fk-primary); color: var(--fk-primary); background: var(--fk-primary-light); }
+
+    /* ── Assessment box ──────────────────────────────────────── */
+    .fk-assessment {
+      background: var(--fk-grey-50);
+      border: 1px solid var(--fk-grey-200);
+      border-radius: var(--fk-radius-lg);
+      padding: 24px;
+      font-size: 14px; color: var(--fk-grey-900);
+      line-height: 1.6; white-space: normal;
+    }
+    .fk-assessment.complete {
+      background: var(--fk-primary-light);
+      border-color: var(--fk-primary-light);
+    }
+    .fk-assessment p { margin-bottom: 16px; }
+    .fk-assessment p:last-child { margin-bottom: 0; }
+    .fk-assessment strong { font-weight: 700; color: var(--fk-grey-900); }
+    .fk-assessment ul, .fk-assessment ol { margin-left: 24px; margin-bottom: 16px; }
+    .fk-assessment h1, .fk-assessment h2, .fk-assessment h3 { 
+      font-size: 16px; margin-top: 24px; margin-bottom: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--fk-primary-dark);
+    }
+    .fk-assessment h1:first-child, .fk-assessment h2:first-child, .fk-assessment h3:first-child { margin-top: 0; }
+    .fk-assessment hr { border: none; border-top: 1px solid rgba(0,0,0,0.1); margin: 20px 0; }
+
+    /* ── Guideline citation box ──────────────────────────────── */
+    .fk-guideline-box {
+      background: var(--fk-white);
+      border: 1px solid var(--fk-grey-200);
+      border-left: 4px solid var(--fk-orange);
+      border-radius: var(--fk-radius-lg);
+      padding: 24px;
+      margin-top: 24px;
+      box-shadow: var(--fk-shadow-sm);
+    }
+    .fk-guideline-title {
+      font-size: 12px; font-weight: 700;
+      color: var(--fk-orange); text-transform: uppercase;
+      margin-bottom: 16px; letter-spacing: 0.5px;
+    }
+    .fk-guideline-item {
+      padding: 16px 0;
+      border-bottom: 1px solid var(--fk-grey-100);
+      font-size: 14px;
+      color: var(--fk-grey-900);
+      line-height: 1.6;
+    }
+    .fk-guideline-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .fk-guideline-ref { font-size: 14px; font-weight: 700; color: var(--fk-grey-900); margin-bottom: 6px; }
+    .fk-guideline-text { font-size: 14px; color: var(--fk-grey-700); margin-bottom: 8px; }
+    .fk-guideline-link { font-size: 13px; color: var(--fk-primary); text-decoration: none; font-weight: 600; }
+    .fk-guideline-link:hover { text-decoration: underline; }
+
+    /* ── Two-column caseworker layout ────────────────────────── */
+    .fk-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+
+    /* ── Decision section ────────────────────────────────────── */
+    .fk-checklist { margin-bottom: 32px; }
+    .fk-check-item {
+      display: flex; align-items: flex-start; gap: 16px;
+      padding: 16px 0;
+      border-bottom: 1px solid var(--fk-grey-100);
+      font-size: 15px;
+    }
+    .fk-check-item:first-child { padding-top: 0; }
+    .fk-check-item:last-child { border-bottom: none; }
+    .fk-check-item input[type="checkbox"] {
+      width: 20px; height: 20px; flex-shrink: 0; cursor: pointer;
+      accent-color: var(--fk-primary); margin-top: 2px;
+    }
+    .fk-check-item label { cursor: pointer; color: var(--fk-grey-900); line-height: 1.5; font-weight: 400; }
+
+    .fk-notes-textarea {
+      width: 100%; border: 1px solid var(--fk-grey-300);
+      border-radius: var(--fk-radius); padding: 16px;
+      font-size: 15px; font-family: var(--fk-font);
+      resize: vertical; min-height: 120px; outline: none;
+      color: var(--fk-grey-900); transition: all 0.15s ease;
+      background: var(--fk-grey-50); line-height: 1.5;
+    }
+    .fk-notes-textarea:focus { border-color: var(--fk-primary); background: var(--fk-white); box-shadow: 0 0 0 2px rgba(0, 122, 62, 0.15); }
+
+    .fk-action-row { display: flex; gap: 16px; margin-top: 24px; align-items: center; flex-wrap: wrap; }
+    .fk-btn {
+      padding: 12px 24px; border: none;
+      border-radius: var(--fk-radius);
+      font-size: 15px; font-weight: 700;
+      cursor: pointer; font-family: var(--fk-font);
+      transition: all 0.15s ease; display: inline-flex; align-items: center; justify-content: center;
+    }
+    .fk-btn-approve { background: var(--fk-primary); color: var(--fk-white); }
+    .fk-btn-approve:hover { background: var(--fk-primary-dark); }
+    .fk-btn-reject { background: var(--fk-white); color: var(--fk-red); border: 1px solid var(--fk-red); }
+    .fk-btn-reject:hover { background: var(--fk-red-light); }
+    .fk-btn-save { background: var(--fk-grey-900); color: var(--fk-white); }
+    .fk-btn-save:hover { background: #000; }
+    .fk-btn-outline { background: var(--fk-white); color: var(--fk-grey-900); border: 1px solid var(--fk-grey-300); }
+    .fk-btn-outline:hover { background: var(--fk-grey-50); border-color: var(--fk-grey-500); }
+
+    .fk-status-msg { font-size: 14px; color: var(--fk-primary); font-weight: 700; display: none; margin-left: auto; }
+
+    /* ── Decision letter preview ─────────────────────────────── */
+    .fk-letter-preview {
+      background: var(--fk-grey-50);
+      border: 1px solid var(--fk-grey-200);
+      border-radius: var(--fk-radius-lg);
+      padding: 32px 40px;
+      font-size: 15px;
+      line-height: 1.8;
+      color: var(--fk-grey-900);
+      white-space: pre-wrap;
+      display: none;
+      margin-top: 32px;
+    }
+    .fk-letter-preview.visible { display: block; }
+  </style>
+</head>
+<body>
+
+<header class="fk-header">
+  <div class="fk-logo-mark">
+    <svg width="36" height="36" viewBox="0 0 100 100" fill="none">
+      <rect x="5" y="5" width="90" height="90" rx="4" stroke="white" stroke-width="6"/>
+      <path d="M30 70 V 30 H 70 L 50 50 V 70 Z" fill="white"/>
+    </svg>
+  </div>
+  <h1>Framtidskassan</h1>
+  <div class="fk-header-sep"></div>
+  <span>Caseworker Dashboard</span>
+  <span class="prototype-badge">Student Prototype</span>
+</header>
+
+<div class="fk-layout">
+  <aside class="fk-sidebar">
+    <div class="fk-sidebar-header">
+      <h2><span id="app-count">0</span> Applications</h2>
+      <button class="fk-refresh-btn" onclick="loadApplications()">Refresh</button>
+    </div>
+    <div class="fk-app-list" id="app-list">
+      <div style="padding:24px;color:var(--fk-grey-500);font-size:14px;text-align:center;">Loading…</div>
+    </div>
+  </aside>
+
+  <main class="fk-main" id="main-content">
+    <div class="fk-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+        <line x1="16" y1="13" x2="8" y2="13"></line>
+        <line x1="16" y1="17" x2="8" y2="17"></line>
+        <polyline points="10 9 9 9 8 9"></polyline>
+      </svg>
+      <p>Select an application from the sidebar to begin review</p>
+    </div>
+  </main>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://kmgyuwmixsdxtpxorrzc.supabase.co';
+  const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttZ3l1d21peHNkeHRweG9ycnpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2ODkzNjQsImV4cCI6MjA5MDI2NTM2NH0.y9D9WTdSHnfRZ4MdJU8Lw0Wvgr5je1NH7Kr5Es9558Q';
+  let applications = [], customers = {}, selectedId = null, docCache = {};
+
+  // ── Guideline references by benefit type (Updated for all 8 benefits) ────────────────────
+  const GUIDELINES = {
+    carrier: [
+      { ref: 'SFB 46 kap. 11 §', text: 'The insured person must be a carrier of an infectious disease or suspected carrier, and must be prohibited from working by a medical officer.', url: '#' },
+      { ref: 'FKFS 2012:3, §2', text: 'Compensation requires documentation from an infection control physician confirming carrier status and recommendation to refrain from work.', url: '#' },
+      { ref: 'SFB 46 kap. 13 §', text: 'Income loss must be documented. The benefit replaces income lost during the period the prohibition to work applies.', url: '#' },
+    ],
+    sick: [
+      { ref: 'SFB 27 kap. 2 §', text: 'Sick pay requires a medical certificate from day 8, confirming inability to work due to illness or injury.', url: '#' },
+      { ref: 'SFB 27 kap. 46 §', text: 'The work capacity must be reduced by at least 25% due to illness. Assessment is against the applicant\'s own occupation for the first 90 days.', url: '#' },
+    ],
+    parental: [
+      { ref: 'SFB 12 kap. 1 §', text: 'Parental benefit is payable for a total of 480 days per child. At least 90 days are reserved for each parent.', url: '#' },
+      { ref: 'SFB 12 kap. 33 §', text: 'To receive income-based parental benefit, the parent must have been insured for at least 240 days before the expected date of childbirth.', url: '#' },
+    ],
+    disability: [
+      { ref: 'SFB 33 kap. 2 §', text: 'Activity compensation is granted to persons aged 19–29 whose work capacity is reduced by at least 25% for at least one year.', url: '#' },
+    ],
+    vab: [
+      { ref: 'SFB 13 kap. 16 §', text: 'Temporary parental benefit (VAB) is granted to a parent who needs to stay home from work to care for a sick child under the age of 12.', url: '#' }
+    ],
+    housing: [
+      { ref: 'SFB 96 kap. 2 §', text: 'Housing allowance can be granted to families with children or youth aged 18-28 to help with housing costs. Verified rental agreements are required.', url: '#' }
+    ],
+    pregnancy: [
+      { ref: 'SFB 10 kap. 1 §', text: 'Pregnancy benefit is paid to a pregnant woman who cannot work due to a physically demanding or risky work environment.', url: '#' }
+    ],
+    dental: [
+      { ref: 'SFB 74 kap. 1 §', text: 'Special dental care grant is provided for preventive dental care for persons with certain illnesses or disabilities.', url: '#' }
+    ],
+    default: [
+      { ref: 'Socialförsäkringsbalken (2010:110)', text: 'The Social Insurance Code governs the conditions for all social insurance benefits administered by Försäkringskassan.', url: '#' },
+    ]
+  };
+
+  const BENEFIT_LABELS = {
+    carrier:   { label: 'Carrier allowance' },
+    sick:      { label: 'Sick pay' },
+    parental:  { label: 'Parental leave' },
+    disability:{ label: 'Disability allowance' },
+    vab:       { label: 'Care of Child (VAB)' },
+    housing:   { label: 'Housing Allowance' },
+    pregnancy: { label: 'Pregnancy Benefit' },
+    dental:    { label: 'Dental Care Grant' }
+  };
+
+  function getBenefitType(app) {
+    const assess = (app.agent_assessment || '').toLowerCase();
+    if (assess.includes('vab') || assess.includes('child')) return 'vab';
+    if (assess.includes('housing') || assess.includes('bostad')) return 'housing';
+    if (assess.includes('pregnan') || assess.includes('gravid')) return 'pregnancy';
+    if (assess.includes('dental') || assess.includes('tand')) return 'dental';
+    if (assess.includes('carrier') || assess.includes('covid') || assess.includes('smitt')) return 'carrier';
+    if (assess.includes('sick')) return 'sick';
+    if (assess.includes('parental')) return 'parental';
+    if (assess.includes('disability') || assess.includes('aktivitet')) return 'disability';
+    return 'carrier'; // default
+  }
+
+  function getGuidelines(app) {
+    const bt = getBenefitType(app);
+    return GUIDELINES[bt] || GUIDELINES.default;
+  }
+
+  async function api(path, opts = {}) {
+    const r = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
+      headers: {
+        'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json', 'Prefer': 'return=representation',
+        ...(opts.headers || {})
+      }, ...opts
+    });
+    return r.json();
+  }
+
+  async function viewDoc(appId, docType) {
+    const key = appId + '_' + docType;
+    if (!docCache[key]) {
+      const app = applications.find(a => a.id === appId);
+      if (!app) return;
+      const r = await fetch(SUPABASE_URL + '/rest/v1/documents?personnummer=eq.' + app.personnummer + '&doc_type=eq.' + docType + '&select=*&order=created_at.desc&limit=1', {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+      });
+      const docs = await r.json();
+      if (!Array.isArray(docs) || !docs[0] || !docs[0].file_data) { alert('Document not found. Please run a new demo.'); return; }
+      docCache[key] = docs[0];
+    }
+    const doc = docCache[key];
+    const w = window.open('', '_blank');
+    w.document.write('<html><body style="margin:0"><iframe src="' + doc.file_data + '" style="width:100%;height:100vh;border:none"></iframe></body></html>');
+  }
+
+  async function downloadDoc(appId, docType) {
+    const key = appId + '_' + docType;
+    if (!docCache[key]) {
+      const app = applications.find(a => a.id === appId);
+      if (!app) return;
+      const r = await fetch(SUPABASE_URL + '/rest/v1/documents?personnummer=eq.' + app.personnummer + '&doc_type=eq.' + docType + '&select=*&order=created_at.desc&limit=1', {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+      });
+      const docs = await r.json();
+      if (!Array.isArray(docs) || !docs[0] || !docs[0].file_data) { alert('Document not found.'); return; }
+      docCache[key] = docs[0];
+    }
+    const doc = docCache[key];
+    const a = document.createElement('a');
+    a.href = doc.file_data; a.download = doc.filename || docType + '_certificate.pdf';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+
+  async function loadApplications() {
+    document.getElementById('app-list').innerHTML = '<div style="padding:32px;color:var(--fk-grey-500);font-size:14px;text-align:center;">Loading records…</div>';
+    const apps = await api('applications?select=*&order=created_at.desc');
+    applications = Array.isArray(apps) ? apps : [];
+    document.getElementById('app-count').textContent = applications.length;
+    const custs = await api('customers?select=*');
+    if (Array.isArray(custs)) custs.forEach(c => { customers[c.personnummer] = c; });
+    renderList();
+  }
+
+  function renderList() {
+    const list = document.getElementById('app-list');
+    if (!applications.length) { list.innerHTML = '<div style="padding:32px;color:var(--fk-grey-500);font-size:14px;text-align:center;">No applications found.</div>'; return; }
+    list.innerHTML = applications.map(app => {
+      const c = customers[app.personnummer];
+      const name = c ? c.full_name : app.personnummer;
+      const date = new Date(app.created_at).toLocaleString('en-GB', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+      const badge = app.status === 'approved' ? 'approved' : app.status === 'rejected' ? 'rejected' : 'pending';
+      const label = app.status === 'approved' ? 'Approved' : app.status === 'rejected' ? 'Rejected' : 'Pending Review';
+      const bt = getBenefitType(app);
+      const bl = BENEFIT_LABELS[bt] || { label: 'Benefit' };
+      return `<div class="fk-app-item${app.id === selectedId ? ' selected':''}" onclick="selectApp('${app.id}')">
+        <div class="fk-app-top"><span class="fk-app-name">${esc(name)}</span><span class="fk-app-time">${date}</span></div>
+        <div class="fk-app-pnr">${app.personnummer}</div>
+        <div class="fk-app-meta">
+          <span class="fk-badge ${badge}">${label}</span>
+          <span class="fk-benefit-tag">${bl.label}</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function extractDocuments(app, appComplete) {
+    const bt = getBenefitType(app);
+    let chatLog = app.chat_log;
+    if (typeof chatLog === 'string') { try { chatLog = JSON.parse(chatLog); } catch(e) { chatLog = []; } }
+    
+    // Default fallback data for the demo if documents are manually verified
+    const isCarrierOrSick = (bt === 'carrier' || bt === 'sick');
+    const medical = { 
+      found: appComplete || false, 
+      patient: 'Applicant', 
+      id: '', 
+      diagnosis: isCarrierOrSick ? 'Confirmed Infection / Illness' : 'Verified condition/status', 
+      from: 'Valid', to: 'Valid', 
+      doctor: 'Verified Provider', 
+      hospital: 'Verified Clinic' 
+    };
+    
+    const employer = { 
+      found: appComplete || false, 
+      company: 'Registered Employer', 
+      employee: 'Applicant', 
+      id: '', org: 'Verified', 
+      role: 'Verified Employee', 
+      salary: 'Matches System', 
+      since: 'Verified' 
+    };
+
+    if (!Array.isArray(chatLog)) return { medical, employer };
+    for (const msg of chatLog) {
+      const c = msg.content || '';
+      if (c.includes('MEDICAL_CERT_UPLOADED') || c.includes('medical certificate') || c.includes('rental agreement')) {
+        medical.found = true;
+      }
+      if (c.includes('EMPLOYER_CERT_UPLOADED') || c.includes('employer certificate') || c.includes('payslip')) {
+        employer.found = true;
+      }
+    }
+    return { medical, employer };
+  }
+
+  function generateDecisionLetter(app, customer, decision) {
+    const c = customer || {};
+    const name = c.full_name || app.personnummer;
+    const date = new Date().toLocaleDateString('en-GB', {day:'2-digit',month:'long',year:'numeric'});
+    const bt = getBenefitType(app);
+    const bl = BENEFIT_LABELS[bt] || { label: 'benefit' };
+
+    if (decision === 'approved') {
+      return `DECISION LETTER – FRAMTIDSKASSAN
+═══════════════════════════════════════════════════
+
+Date: ${date}
+Reference: APP-${app.id.substring(0,8).toUpperCase()}
+
+To: ${name}
+Personal ID: ${app.personnummer}
+
+SUBJECT: Decision on your application for ${bl.label}
+
+Dear ${name.split(' ')[0]},
+
+We have reviewed your application for ${bl.label} submitted via Framtidskassan.
+
+DECISION: YOUR APPLICATION IS APPROVED
+
+Based on the submitted documentation and the preliminary assessment, your application fulfils the requirements set out in the Social Insurance Code (Socialförsäkringsbalken 2010:110).
+
+Your compensation will be calculated based on your qualifying income and the registered period.
+
+For further questions, please contact your assigned caseworker.
+
+This is a student prototype decision — not legally binding.
+Framtidskassan · framtidskassan.se`;
+    } else {
+      return `DECISION LETTER – FRAMTIDSKASSAN
+═══════════════════════════════════════════════════
+
+Date: ${date}
+Reference: APP-${app.id.substring(0,8).toUpperCase()}
+
+To: ${name}
+Personal ID: ${app.personnummer}
+
+SUBJECT: Decision on your application for ${bl.label}
+
+Dear ${name.split(' ')[0]},
+
+We have reviewed your application for ${bl.label}.
+
+DECISION: YOUR APPLICATION IS REJECTED
+
+Your application does not currently fulfil the administrative requirements. Further details regarding this rejection have been recorded by the caseworker.
+
+You have the right to appeal this decision within three weeks of receiving this letter.
+
+This is a student prototype decision — not legally binding.
+Framtidskassan · framtidskassan.se`;
+    }
+  }
+
+  async function selectApp(id) {
+    selectedId = id;
+    renderList();
+    const app = applications.find(a => a.id === id);
+    if (!app) return;
+    const c = customers[app.personnummer];
+
+    const appComplete = app.agent_assessment && app.agent_assessment.toLowerCase().includes('application is complete');
+    const { medical, employer } = extractDocuments(app, appComplete);
+
+    let chatLog = app.chat_log;
+    if (typeof chatLog === 'string') { try { chatLog = JSON.parse(chatLog); } catch(e) { chatLog = []; } }
+
+    // Chat HTML (Parsed via marked.js)
+    let chatHtml = '<div style="color:var(--fk-grey-500);font-size:14px;padding:16px 0">No conversation history available.</div>';
+    if (Array.isArray(chatLog) && chatLog.length > 0) {
+      chatHtml = chatLog.map(msg => {
+        const isAgent = msg.role === 'assistant';
+        const content = isAgent ? marked.parse(msg.content || '') : esc(msg.content || '');
+        return `<div class="fk-chat-msg ${isAgent ? 'agent' : 'user'}">
+          <div class="fk-chat-avatar">${isAgent ? 'FK' : 'You'}</div>
+          <div class="fk-chat-bubble">${content}</div>
+        </div>`;
+      }).join('');
+    }
+
+    // Assessment HTML (Parsed via marked.js)
+    const rawAssessment = app.agent_assessment || 'No automated assessment recorded for this application.';
+    const assessmentHtml = app.agent_assessment ? marked.parse(rawAssessment) : esc(rawAssessment);
+
+    // Documents from Supabase
+    let docLinks = {};
+    try {
+      const docsResp = await fetch(SUPABASE_URL + '/rest/v1/documents?personnummer=eq.' + app.personnummer + '&select=*&order=created_at.desc', {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+      });
+      const docs = await docsResp.json();
+      if (Array.isArray(docs)) docs.forEach(d => { if (!docLinks[d.doc_type]) docLinks[d.doc_type] = d; });
+    } catch(e) {}
+
+    const bt = getBenefitType(app);
+    const docLabel1 = (bt === 'housing') ? 'Rental Agreement' : 'Medical Certificate';
+    const docLabel2 = (bt === 'housing') ? 'Proof of Income' : 'Employer Certificate';
+
+    // Document cards
+    const medHtml = medical.found ? `
+      <div class="fk-doc-card">
+        <div class="fk-doc-header"><div class="fk-doc-type">${docLabel1}</div></div>
+        <div class="fk-doc-row"><span class="fk-doc-label">Applicant</span><span class="fk-doc-val">${esc(medical.patient)}</span></div>
+        <div class="fk-doc-row"><span class="fk-doc-label">Details</span><span class="fk-doc-val">${esc(medical.diagnosis)}</span></div>
+        <div class="fk-doc-status">Validated – Covers stated requirement</div>
+        ${docLinks.medical ? `<div class="fk-doc-actions"><button class="fk-doc-btn" onclick="viewDoc('${app.id}','medical')">View Document</button><button class="fk-doc-btn" onclick="downloadDoc('${app.id}','medical')">Download</button></div>` : ''}
+      </div>` : `<div class="fk-no-doc">${docLabel1} not provided</div>`;
+
+    const empHtml = employer.found ? `
+      <div class="fk-doc-card">
+        <div class="fk-doc-header"><div class="fk-doc-type">${docLabel2}</div></div>
+        <div class="fk-doc-row"><span class="fk-doc-label">Applicant</span><span class="fk-doc-val">${esc(employer.employee)}</span></div>
+        <div class="fk-doc-row"><span class="fk-doc-label">Details</span><span class="fk-doc-val">${esc(employer.company)}</span></div>
+        <div class="fk-doc-status">Validated – Employer/Income data confirmed</div>
+        ${docLinks.employer ? `<div class="fk-doc-actions"><button class="fk-doc-btn" onclick="viewDoc('${app.id}','employer')">View Document</button><button class="fk-doc-btn" onclick="downloadDoc('${app.id}','employer')">Download</button></div>` : ''}
+      </div>` : `<div class="fk-no-doc">${docLabel2} not provided</div>`;
+
+    // Guideline citations
+    const guidelines = getGuidelines(app);
+    const guidelineHtml = guidelines.map(g => `
+      <div class="fk-guideline-item">
+        <div class="fk-guideline-ref">${g.ref}</div>
+        <div class="fk-guideline-text">${g.text}</div>
+        <a href="${g.url}" target="_blank" class="fk-guideline-link">View legal source</a>
+      </div>`).join('');
+
+    const isComplete = (app.agent_assessment || '').toLowerCase().includes('complete');
+    const badge = app.status === 'approved' ? 'approved' : app.status === 'rejected' ? 'rejected' : 'pending';
+    const badgeLabel = app.status === 'approved' ? 'Approved' : app.status === 'rejected' ? 'Rejected' : 'Pending Review';
+    const date = new Date(app.created_at).toLocaleString('en-GB', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    const bl = BENEFIT_LABELS[bt] || { label: 'Benefit' };
+
+    document.getElementById('main-content').innerHTML = `
+      <div class="fk-card">
+        <div class="fk-card-title">Customer Profile</div>
+        <div class="fk-info-grid">
+          <div class="fk-info-item"><label>Name</label><span>${c ? esc(c.full_name) : '–'}</span></div>
+          <div class="fk-info-item"><label>Personal ID</label><span>${app.personnummer}</span></div>
+          <div class="fk-info-item"><label>Email Address</label><span>${c ? esc(c.email) : '–'}</span></div>
+          <div class="fk-info-item"><label>Phone Number</label><span>${c ? esc(c.phone) : '–'}</span></div>
+          <div class="fk-info-item"><label>Registered Employer</label><span>${c ? esc(c.employer) : '–'}</span></div>
+          <div class="fk-info-item"><label>Employment Type</label><span>${c ? esc(c.employment_type) : '–'}</span></div>
+          <div class="fk-info-item"><label>Monthly Income</label><span>${c ? c.monthly_income + ' SEK' : '–'}</span></div>
+          <div class="fk-info-item"><label>Current Status</label>
+            <span class="fk-badge ${badge}">${badgeLabel}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="fk-card">
+        <div class="fk-card-title">Application Overview</div>
+        <div class="fk-info-grid">
+          <div class="fk-info-item"><label>Benefit Category</label><span>${bl.label}</span></div>
+          <div class="fk-info-item"><label>System Reference</label><span style="font-family:monospace;font-size:14px;color:var(--fk-grey-700)">${app.id.substring(0,8)}…</span></div>
+          <div class="fk-info-item"><label>Submission Date</label><span>${date}</span></div>
+          <div class="fk-info-item"><label>Assigned Caseworker</label><span>Pending Assignment</span></div>
+        </div>
+      </div>
+
+      <div class="fk-two-col">
+        <div class="fk-card">
+          <div class="fk-card-title">Interaction Log</div>
+          <div class="fk-chat-log">${chatHtml}</div>
+        </div>
+
+        <div>
+          <div class="fk-card" style="margin-bottom:24px">
+            <div class="fk-card-title">System Assessment</div>
+            <div class="fk-assessment ${isComplete ? 'complete' : ''}">${assessmentHtml}</div>
+          </div>
+          <div class="fk-card">
+            <div class="fk-card-title">Statutory Framework</div>
+            <div class="fk-guideline-box">
+              <div class="fk-guideline-title">Applicable directives for ${bl.label}</div>
+              ${guidelineHtml}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fk-card">
+        <div class="fk-card-title">Supporting Documentation</div>
+        <div class="fk-docs-grid">${medHtml}${empHtml}</div>
+      </div>
+
+      <div class="fk-card">
+        <div class="fk-card-title">Verification & Decision</div>
+        <div class="fk-checklist">
+          <div class="fk-check-item">
+            <input type="checkbox" id="chk1" ${medical.found ? 'checked' : ''}>
+            <label for="chk1">Primary documentation corresponds to the requested action</label>
+          </div>
+          <div class="fk-check-item">
+            <input type="checkbox" id="chk2" ${employer.found ? 'checked' : ''}>
+            <label for="chk2">Secondary certification substantiates the reported status</label>
+          </div>
+          <div class="fk-check-item">
+            <input type="checkbox" id="chk3" ${isComplete ? 'checked' : ''}>
+            <label for="chk3">System preliminary assessment is complete and logically consistent</label>
+          </div>
+          <div class="fk-check-item">
+            <input type="checkbox" id="chk4">
+            <label for="chk4">All submitted files have been manually inspected by the caseworker</label>
+          </div>
+          <div class="fk-check-item">
+            <input type="checkbox" id="chk5">
+            <label for="chk5">Projected compensation aligns with statutory limits</label>
+          </div>
+        </div>
+
+        <label style="font-size:13px;font-weight:700;color:var(--fk-grey-700);display:block;margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px;">Caseworker Observations</label>
+        <textarea class="fk-notes-textarea" id="notes-field" placeholder="Document review notes, anomalies, or formal justification for decision…">${esc(app.caseworker_notes || '')}</textarea>
+
+        <div class="fk-action-row">
+          <button class="fk-btn fk-btn-approve" onclick="updateApp('${app.id}','approved')">Approve Application</button>
+          <button class="fk-btn fk-btn-reject" onclick="updateApp('${app.id}','rejected')">Reject Application</button>
+          <button class="fk-btn fk-btn-save" onclick="saveNotes('${app.id}')">Save Draft Notes</button>
+          <button class="fk-btn fk-btn-outline" onclick="previewLetter('${app.id}')">Generate Decision Letter</button>
+          <span class="fk-status-msg" id="status-msg"></span>
+        </div>
+
+        <div class="fk-letter-preview" id="letter-preview"></div>
+      </div>`;
+  }
+
+  async function updateApp(id, status) {
+    const notes = document.getElementById('notes-field')?.value || '';
+    await api('applications?id=eq.' + id, { method: 'PATCH', body: JSON.stringify({ status, caseworker_notes: notes }) });
+    const app = applications.find(a => a.id === id);
+    if (app) { app.status = status; app.caseworker_notes = notes; }
+    showMsg(status === 'approved' ? 'Application officially approved.' : 'Application rejected.');
+    renderList();
+    previewLetter(id, status);
+    selectApp(id);
+  }
+
+  async function saveNotes(id) {
+    const notes = document.getElementById('notes-field')?.value || '';
+    await api('applications?id=eq.' + id, { method: 'PATCH', body: JSON.stringify({ caseworker_notes: notes }) });
+    const app = applications.find(a => a.id === id);
+    if (app) app.caseworker_notes = notes;
+    showMsg('Observations saved to record.');
+  }
+
+  function previewLetter(id, forcedStatus) {
+    const app = applications.find(a => a.id === id);
+    if (!app) return;
+    const c = customers[app.personnummer];
+    const status = forcedStatus || app.status || 'pending';
+    if (status === 'pending') { showMsg('A decision must be logged to generate correspondence.'); return; }
+    const letter = generateDecisionLetter(app, c, status);
+    const el = document.getElementById('letter-preview');
+    if (el) { el.textContent = letter; el.classList.add('visible'); }
+  }
+
+  function showMsg(msg) {
+    const el = document.getElementById('status-msg');
+    if (el) { el.textContent = msg; el.style.display = 'inline'; setTimeout(() => { el.style.display = 'none'; }, 3500); }
+  }
+
+  function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  loadApplications();
+</script>
+</body>
+</html>
