@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Framtidskassan – Innovation in Motion</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <style>
+        /* ── Design System (TCL Concept) ── */
+        :root {
+            --bg-dark: #111111;
+            --bg-sage: #DCE0D5;
+            --text-light: #F4F4F4;
+            --text-dark: #111111;
+            --accent-line: rgba(244, 244, 244, 0.3);
+            --accent-line-dark: rgba(17, 17, 17, 0.3);
+            --font-main: 'Inter', Helvetica, sans-serif;
+            --glow-primary: rgba(220, 224, 213, 0.15);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body, html {
+            font-family: var(--font-main);
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevents double scrollbars */
+        }
+
+        /* ── Presentation Layout & Scroll Snapping ── */
+        .slider-container {
+            height: 100vh;
+            width: 100vw;
+            overflow-y: auto;
+            scroll-snap-type: y mandatory;
+            scroll-behavior: smooth;
+        }
+
+        .slide {
+            width: 100vw;
+            height: 100vh; /* Forces exact screen height */
+            scroll-snap-align: start;
+            scroll-snap-stop: always;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 80px 120px;
+            overflow: hidden;
+            border-bottom: 1px solid var(--accent-line);
+        }
+
+        .slide.sage {
+            background-color: var(--bg-sage);
+            color: var(--text-dark);
+            border-bottom: 1px solid var(--accent-line-dark);
+        }
+
+        /* ── Branding Anchors ── */
+        .corner-brand {
+            position: absolute;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            z-index: 10;
+        }
+        .brand-tl { top: 40px; left: 40px; }
+        .brand-tr { top: 40px; right: 40px; text-align: right; }
+        .brand-bl { bottom: 40px; left: 40px; }
+        .brand-br { bottom: 40px; right: 40px; text-align: right; }
+
+        /* ── Abstract Geometric Motion Lines ── */
+        .geo-circle {
+            position: absolute;
+            border-radius: 50%;
+            border: 1px solid var(--accent-line);
+            z-index: 0;
+            pointer-events: none;
+        }
+        .slide.sage .geo-circle { border-color: var(--accent-line-dark); }
+        .geo-dashed { border-style: dashed; border-width: 1.5px; }
+        
+        .geo-line {
+            position: absolute;
+            height: 1px;
+            width: 100vw;
+            background: var(--accent-line);
+            top: 50%;
+            left: 0;
+            z-index: 0;
+        }
+        .slide.sage .geo-line { background: var(--accent-line-dark); }
+
+        /* ── Typography ── */
+        .content {
+            position: relative;
+            z-index: 5;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .massive-number {
+            font-size: 160px;
+            font-weight: 300;
+            line-height: 1;
+            margin-bottom: 20px;
+            letter-spacing: -4px;
+        }
+
+        .slide.sage .massive-number {
+            color: var(--text-dark);
+        }
+
+        .hero-title {
+            font-size: 110px;
+            font-weight: 900;
+            line-height: 1;
+            letter-spacing: -3px;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            color: var(--text-light);
+        }
+
+        h2 {
+            font-size: 48px;
+            font-weight: 700;
+            letter-spacing: -1px;
+            margin-bottom: 40px;
+        }
+
+        p {
+            font-size: 22px;
+            font-weight: 300;
+            line-height: 1.6;
+            margin-bottom: 24px;
+            max-width: 800px;
+        }
+
+        /* ── Layout Modules ── */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: start;
+        }
+
+        /* ── MASSIVE FLOWCHART UI ── */
+        .flowchart-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px; 
+            margin-top: 15px;
+            width: 100%;
+            position: relative;
+            z-index: 5;
+        }
+
+        .flow-zone {
+            display: flex;
+            flex-direction: column;
+            gap: 15px; 
+            width: 100%;
+        }
+
+        .orchestration-layer {
+            border: 1px dashed var(--accent-line);
+            padding: 30px; 
+            position: relative;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+            box-shadow: 0 0 40px var(--glow-primary);
+        }
+
+        .zone-label {
+            position: absolute;
+            top: -12px;
+            left: 40px;
+            background: var(--bg-dark);
+            padding: 0 15px;
+            font-size: 13px;
+            font-weight: 900;
+            letter-spacing: 2px;
+            color: var(--bg-sage);
+        }
+
+        .flow-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: stretch;
+            gap: 20px;
+            width: 100%;
+        }
+
+        .flow-node {
+            border: 1px solid var(--text-light);
+            padding: 24px;
+            background: rgba(17, 17, 17, 0.8);
+            backdrop-filter: blur(5px);
+            border-radius: 4px;
+            flex: 1;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .flow-node.highlight {
+            background: var(--text-light);
+            color: var(--text-dark);
+            border: none;
+            box-shadow: 0 10px 30px rgba(244, 244, 244, 0.15);
+        }
+
+        .flow-node h3 {
+            font-size: 16px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            color: inherit;
+        }
+
+        .flow-node p {
+            font-size: 14px;
+            margin: 0;
+            line-height: 1.5;
+            color: inherit;
+            opacity: 0.8;
+        }
+
+        .flow-arrow {
+            color: var(--text-light);
+            font-size: 24px;
+            font-weight: 300;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .flow-vertical-arrow {
+            text-align: center;
+            color: var(--bg-sage);
+            font-size: 24px;
+            margin: -5px 0;
+        }
+
+        /* ── Decorative elements ── */
+        .tag {
+            display: inline-block;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 1px solid currentColor;
+            padding-bottom: 4px;
+            margin-bottom: 30px;
+        }
+
+        /* ── Fullscreen Button ── */
+        .fullscreen-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: var(--text-light);
+            padding: 10px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: var(--font-main);
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .fullscreen-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        :fullscreen .fullscreen-btn {
+            opacity: 0.1;
+        }
+
+        :fullscreen .fullscreen-btn:hover {
+            opacity: 1;
+        }
+
+    </style>
+</head>
+<body>
+
+<button id="fullscreen-btn" class="fullscreen-btn">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+    </svg>
+    Fullscreen [F]
+</button>
+
+<div class="slider-container" id="presentation-slider">
+
+    <div class="slide">
+        <div class="geo-line"></div>
+        <div class="geo-circle" style="width: 800px; height: 800px; top: -100px; left: -200px;"></div>
+        <div class="geo-circle geo-dashed" style="width: 600px; height: 600px; top: 100px; right: 10%;"></div>
+        <div class="geo-circle" style="width: 400px; height: 1000px; top: -100px; right: 30%; border-radius: 50%;"></div>
+        
+        <div class="corner-brand brand-tl">TCL Innovation<br>in motion</div>
+        <div class="corner-brand brand-tr">Framtidskassan<br>Tech Concept Lab Mock Project</div>
+        <div class="corner-brand brand-bl">Innovation Project</div>
+        <div class="corner-brand brand-br">April 14, 2026</div>
+
+        <div class="content">
+            <h1 class="hero-title">FRAMTIDSKASSAN</h1>
+            
+            <div style="margin-top: 40px; max-width: 700px;">
+                <div class="tag">Enterprise Agentic Architecture</div>
+                <p style="font-size: 24px; font-weight: 400;">Using smart AI assistants to organize, check, and manage Swedish social insurance applications.</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide sage">
+        <div class="corner-brand brand-tr">The Bottleneck</div>
+        
+        <div class="content">
+            <div class="two-col">
+                <div>
+                    <div class="massive-number" style="color: var(--text-dark);">01.</div>
+                    <h2>The Human<br>Bottleneck.</h2>
+                </div>
+                <div style="padding-top: 40px;">
+                    <div class="tag">Unscalable Infrastructure</div>
+                    <p>Current digital forms force people to fit their complex real-life situations into strict categories. When a situation doesn't perfectly fit the form, applications end up in the wrong place.</p>
+                    
+                    <p><strong>The Delay Trap:</strong> This causes huge delays. A single missing document or confusing question can leave an application stuck for weeks while it bounces between departments.</p>
+
+                    <p>Highly-trained caseworkers end up doing basic data entry and manually checking documents, which slows down the whole system.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide">
+        <div class="geo-circle" style="width: 700px; height: 700px; top: 10%; right: -100px;"></div>
+        <div class="geo-circle geo-dashed" style="width: 500px; height: 500px; top: 20%; right: 50px;"></div>
+        
+        <div class="corner-brand brand-tr">The Solution</div>
+        
+        <div class="content">
+            <div class="two-col">
+                <div>
+                    <div class="massive-number">02.</div>
+                    <h2>Smart<br>Automation.</h2>
+                </div>
+                <div style="padding-top: 40px;">
+                    <div class="tag">The AI-First Paradigm</div>
+                    <p style="color: var(--text-light); font-weight: 700;">We separate the heavy paperwork from the final decision.</p>
+                    
+                    <p>Instead of making citizens figure out complex forms, our smart system takes their natural words and directly connects them to the right rules.</p>
+                    
+                    <p>The system acts like a tireless assistant—gathering the exact proof needed, checking identities, and reading documents before a human caseworker even looks at the file.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide sage">
+        <div class="geo-line"></div>
+        <div class="geo-circle geo-dashed" style="width: 1400px; height: 1400px; top: -400px; left: -200px; opacity: 0.3;"></div>
+        
+        <div class="corner-brand brand-tl">Pipeline Architecture</div>
+        
+        <div class="content" style="max-width: 100%;">
+            <div class="massive-number" style="font-size: 72px; margin-bottom: 20px; margin-top: 20px; color: var(--text-dark);">03. <span style="font-weight:700; letter-spacing: -2px;">THE DATA FLOW</span></div>
+            
+            <div class="flowchart-container">
+                
+                <div class="flow-zone">
+                    <div class="flow-row">
+                        <div class="flow-node" style="border-color: var(--text-dark); background: rgba(255,255,255,0.8); color: var(--text-dark);">
+                            <h3>1. User Input</h3>
+                            <p>The citizen describes their situation naturally. The system safely sends this text forward.</p>
+                        </div>
+                        <div class="flow-arrow" style="color: var(--text-dark);">→</div>
+                        <div class="flow-node highlight" style="background: var(--text-dark); color: var(--text-light);">
+                            <h3 style="color: var(--text-light);">2. Secure Preparation</h3>
+                            <p>The system safely gathers the user's text and gets any uploaded files ready for the AI to process.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-vertical-arrow" style="color: var(--text-dark);">↓</div>
+
+                <div class="flow-zone orchestration-layer" style="border-color: rgba(17,17,17,0.2); box-shadow: none;">
+                    <div class="zone-label" style="background: var(--bg-sage); color: var(--text-dark);">N8N: THE CONNECTION LAYER</div>
+                    <div class="flow-row">
+                        <div class="flow-node" style="border-color: var(--text-dark); background: rgba(255,255,255,0.8); color: var(--text-dark);">
+                            <h3>3. Sorting Assistant (Agent 1)</h3>
+                            <p>Figures out which of the 8 benefits applies. Asks the user for more details if it's unsure.</p>
+                        </div>
+                        <div class="flow-arrow" style="color: var(--text-dark);">→</div>
+                        <div class="flow-node highlight" style="background: var(--text-dark); color: var(--text-light);">
+                            <h3 style="color: var(--text-light);">4. Specialist Assistant (Agent 2)</h3>
+                            <p>Loads the exact rules needed. Asks the citizen the right questions and checks their uploaded documents.</p>
+                        </div>
+                        <div class="flow-arrow" style="color: var(--text-dark);">→</div>
+                        <div class="flow-node" style="border-color: var(--text-dark); background: rgba(255,255,255,0.8); color: var(--text-dark);">
+                            <h3>5. Check & Move Forward</h3>
+                            <p>Checks if everything is done. If the file is complete, it moves to the final step.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flow-vertical-arrow" style="color: var(--text-dark);">↓</div>
+
+                <div class="flow-zone">
+                    <div class="flow-row">
+                        <div class="flow-node" style="border-color: var(--text-dark); background: rgba(255,255,255,0.8); color: var(--text-dark);">
+                            <h3>6. Secure Storage</h3>
+                            <p>The database safely stores the chat, the AI's notes, and the checked documents.</p>
+                        </div>
+                        <div class="flow-arrow" style="color: var(--text-dark);">→</div>
+                        <div class="flow-node highlight" style="background: #007A3E; color: var(--text-light);">
+                            <h3 style="color: var(--text-light);">7. Human Final Review</h3>
+                            <p>The neat, pre-checked file goes to the dashboard for a human caseworker to review and approve.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="slide">
+        <div class="geo-circle" style="width: 50vw; height: 150vh; top: -25vh; right: -10vw; border-radius: 50%;"></div>
+        <div class="geo-circle geo-dashed" style="width: 40vw; height: 120vh; top: -10vh; right: -5vw; border-radius: 50%;"></div>
+
+        <div class="corner-brand brand-tr">AI Strategy</div>
+        
+        <div class="content">
+            <div class="two-col">
+                <div>
+                    <div class="massive-number">04.</div>
+                    <h2>The AI<br>Team.</h2>
+                </div>
+                <div style="padding-top: 40px;">
+                    <div class="tag">Beyond Chatbots</div>
+                    <p style="color: var(--text-light); font-weight: 700;">We built a team of specialized AI assistants.</p>
+                    
+                    <p><strong>The Sorter Agent:</strong> Agent 1 guards the front door. It cannot make final decisions. If it isn't completely sure what the user needs, it stops and asks for more details, preventing errors early.</p>
+                    
+                    <p><strong>The Specialist:</strong> Agent 2 is a flexible worker. Once the benefit is known, it is given the exact rules for that benefit. It instantly becomes an expert capable of checking uploaded documents and matching them with database records.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide sage">
+        <div class="geo-line"></div>
+        <div class="corner-brand brand-tr">Data Integrity</div>
+        
+        <div class="content">
+            <div class="two-col">
+                <div>
+                    <div class="massive-number" style="color: var(--text-dark);">05.</div>
+                    <h2>Maximum<br>Security.</h2>
+                </div>
+                <div style="padding-top: 40px;">
+                    <div class="tag">Fixing AI Weaknesses</div>
+                    <p style="color: var(--text-dark); font-weight: 700;">Protecting personal data from the risks of standard AI.</p>
+                    
+                    <p><strong>The Standard AI Problem:</strong> Normal AI tools can be tricked, make things up, and leak data. They are not safe enough for handling personal information.</p>
+                    
+                    <p><strong>Our Secure Setup:</strong> We use a secure middle layer and self hosted n8n so the user's browser securely talks directly to the AI( for the demo). Also, our custom filter cleans the AI's response, making sure only safe, structured data goes into the database.</p>
+
+                    <p><strong>The Future - Local AI:</strong> To ensure total data control and GDPR compliance, our system is built so we can easily swap cloud AI for local AI models. This means no citizen data will ever leave the agency's own servers.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide">
+        <div class="geo-circle" style="width: 80vw; height: 80vw; top: 50%; left: -40vw; transform: translateY(-50%); border-radius: 50%;"></div>
+        <div class="corner-brand brand-tl">Completion</div>
+        <div class="corner-brand brand-br">Innovation Project</div>
+
+        <div class="content">
+            <div class="two-col">
+                <div>
+                    <div class="massive-number">06.</div>
+                    <h2>Human in<br>the Loop</h2>
+                </div>
+                <div style="padding-top: 40px;">
+                    <div class="tag">The Human Factor</div>
+                    <p style="color: var(--text-light); font-weight: 700;">The AI assistants do not make the final decision.</p>
+                    <p>By using AI to handle the hard work—understanding the user, collecting data, and checking documents—we give the human caseworker a perfectly organized and clear file. </p>
+                    <p>We get much faster and more efficient, but the final responsibility always stays in human hands.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="slide" style="background-color: #007A3E;">
+        <div class="geo-circle" style="width: 120vw; height: 120vw; top: 50%; left: 50%; transform: translate(-50%, -50%); border-color: rgba(255,255,255,0.1); border-width: 2px;"></div>
+        <div class="geo-circle geo-dashed" style="width: 80vw; height: 80vw; top: 50%; left: 50%; transform: translate(-50%, -50%); border-color: rgba(255,255,255,0.15);"></div>
+        
+        <div class="corner-brand brand-tl" style="color: white;">Live Session</div>
+        <div class="corner-brand brand-br" style="color: white;">Demonstration</div>
+
+        <div class="content" style="text-align: center;">
+            <div class="tag" style="color: rgba(255,255,255,0.8); border-color: rgba(255,255,255,0.8); margin-bottom: 40px;">System Ready</div>
+            <h2 style="font-size: 90px; color: #FFFFFF; line-height: 1; margin-bottom: 30px; text-transform: uppercase; letter-spacing: -2px;">Live Prototype<br>Demonstration</h2>
+            <p style="margin: 0 auto; color: #E6F2EC; font-size: 28px; max-width: 600px; font-weight: 400;">Let's step out of the slides and see these AI assistants in action.</p>
+        </div>
+    </div>
+
+    <!-- NEW CONTACT SLIDE -->
+    <div class="slide" style="border-bottom: none;">
+        <div class="geo-circle" style="width: 800px; height: 800px; top: -200px; right: -200px; opacity: 0.5;"></div>
+        <div class="geo-line" style="top: 80%;"></div>
+        
+        <div class="corner-brand brand-tl">Get in Touch</div>
+        <div class="corner-brand brand-br">End of Presentation</div>
+
+        <div class="content">
+            <h2 style="font-size: 90px; line-height: 1; margin-bottom: 60px; text-transform: uppercase; letter-spacing: -2px; color: var(--text-light);">Thank You.</h2>
+            
+            <div class="two-col" style="gap: 60px;">
+                <!-- Timothy -->
+                <div style="display: flex; gap: 30px; align-items: center; border: 1px solid var(--accent-line); padding: 30px; border-radius: 8px; background: rgba(255,255,255,0.02); backdrop-filter: blur(10px);">
+                    <div style="width: 120px; height: 120px; flex-shrink: 0; border: 1px dashed var(--accent-line); background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; border-radius: 8px; padding: 6px;">
+                        <!-- PASTE TIMOTHY'S QR CODE PATH IN THE SRC ATTRIBUTE BELOW -->
+                        <img src="/Users/timothyvictor/Downloads/Timothy_Vic_Qr.png" alt="Timothy LinkedIn QR" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <h3 style="font-size: 24px; font-weight: 700; margin-bottom: 8px; color: var(--text-light);">Timothy Victor Rachuri</h3>
+                        <p style="font-size: 18px; color: rgba(244, 244, 244, 0.7); margin-bottom: 0; font-family: monospace;">rtimvictor@gmail.com</p>
+                    </div>
+                </div>
+
+                <!-- Rakesh -->
+                <div style="display: flex; gap: 30px; align-items: center; border: 1px solid var(--accent-line); padding: 30px; border-radius: 8px; background: rgba(255,255,255,0.02); backdrop-filter: blur(10px);">
+                    <div style="width: 120px; height: 120px; flex-shrink: 0; border: 1px dashed var(--accent-line); background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; border-radius: 8px; padding: 6px;">
+                        <!-- PASTE RAKESH'S QR CODE PATH IN THE SRC ATTRIBUTE BELOW -->
+                        <img src="/Users/timothyvictor/Downloads/Rakesh_red_Qr.png" alt="Rakesh LinkedIn QR" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;">
+                    </div>
+                    <div>
+                        <h3 style="font-size: 24px; font-weight: 700; margin-bottom: 8px; color: var(--text-light);">Rakesh Reddy Karri</h3>
+                        <p style="font-size: 18px; color: rgba(244, 244, 244, 0.7); margin-bottom: 0; font-family: monospace;">rakeshreddy3466@gmail.com</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const slider = document.getElementById('presentation-slider');
+        const slides = document.querySelectorAll('.slide');
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        let isScrolling = false;
+
+        // Toggle Fullscreen Function
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.log(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+
+        // Bind Button Click
+        fullscreenBtn.addEventListener('click', toggleFullScreen);
+
+        // Keyboard Navigation & Shortcuts
+        document.addEventListener('keydown', (e) => {
+            // Fullscreen shortcut 'F'
+            if (e.key.toLowerCase() === 'f') {
+                e.preventDefault();
+                toggleFullScreen();
+                return;
+            }
+
+            if (isScrolling) return;
+
+            // Calculate current slide index based on scroll position
+            const currentScroll = slider.scrollTop;
+            const windowHeight = window.innerHeight;
+            let currentIndex = Math.round(currentScroll / windowHeight);
+
+            if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === 'ArrowRight' || e.key === ' ') {
+                e.preventDefault();
+                if (currentIndex < slides.length - 1) {
+                    isScrolling = true;
+                    slides[currentIndex + 1].scrollIntoView({ behavior: 'smooth' });
+                    setTimeout(() => isScrolling = false, 600); // Prevent double skips
+                }
+            } else if (e.key === 'ArrowUp' || e.key === 'PageUp' || e.key === 'ArrowLeft') {
+                e.preventDefault();
+                if (currentIndex > 0) {
+                    isScrolling = true;
+                    slides[currentIndex - 1].scrollIntoView({ behavior: 'smooth' });
+                    setTimeout(() => isScrolling = false, 600);
+                }
+            }
+        });
+    });
+</script>
+
+</body>
+</html>
