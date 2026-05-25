@@ -1,0 +1,371 @@
+{
+  "name": "FK Carrier Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "fk-carrier-chat",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1664,
+        96
+      ],
+      "id": "a287d4b0-4fb5-4fb6-aa6d-f124784db7e4",
+      "name": "Webhook",
+      "webhookId": "8764ce14-63c9-47ed-bd48-d250fe923da9"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body || $input.first().json;\nconst personnummer = body.personnummer || '';\nconst message = body.message || '';\nconst chatHistory = body.chatHistory || [];\nconst sessionId = body.sessionId || 'session_' + Date.now();\nconst document = body.document || null;  // PASS THROUGH real document\n\n// The frontend now determines the benefit type via the Classification AI \n// and passes it either in the body directly or appended to the first message.\nlet benefitType = body.benefitType || '';\n\nif (!benefitType) {\n  const btMatch = message.match(/BENEFIT_TYPE:(\\w+)/);\n  benefitType = btMatch ? btMatch[1] : 'carrier'; // Fallback safeguard\n}\n\n// Clean the hidden routing tag out of the message so the main AI doesn't see it\nconst cleanMessage = message.replace(/\\s*BENEFIT_TYPE:\\w+/, '').trim();\n\nreturn [{ \n  json: { \n    personnummer, \n    message: cleanMessage, \n    chatHistory, \n    sessionId, \n    benefitType, \n    document \n  } \n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1456,
+        96
+      ],
+      "id": "bdbf7783-0c7b-4c61-a83c-8f04792e1a0b",
+      "name": "Parse Input"
+    },
+    {
+      "parameters": {
+        "url": "=https://kmgyuwmixsdxtpxorrzc.supabase.co/rest/v1/customers?personnummer=eq.{{ $json.personnummer }}&select=*",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttZ3l1d21peHNkeHRweG9ycnpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2ODkzNjQsImV4cCI6MjA5MDI2NTM2NH0.y9D9WTdSHnfRZ4MdJU8Lw0Wvgr5je1NH7Kr5Es9558Q"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttZ3l1d21peHNkeHRweG9ycnpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2ODkzNjQsImV4cCI6MjA5MDI2NTM2NH0.y9D9WTdSHnfRZ4MdJU8Lw0Wvgr5je1NH7Kr5Es9558Q"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1248,
+        96
+      ],
+      "id": "6948eeb5-b63a-4ae2-8e6d-94748835bf64",
+      "name": "Fetch Customer"
+    },
+    {
+      "parameters": {
+        "jsCode": "const result = $input.first().json;\nconst prevData = $('Parse Input').first().json;\n\nlet customerData = null;\nlet customerContext = 'Customer not found in the system.';\n\nconst customers = Array.isArray(result) ? result : [result];\n\nif (customers.length > 0 && customers[0].personnummer) {\n  customerData = customers[0];\n  customerContext = 'Customer from system - Name: ' + customerData.full_name + ', ID: ' + customerData.personnummer + ', Email: ' + customerData.email + ', Phone: ' + customerData.phone + ', Employer: ' + customerData.employer + ', Type: ' + customerData.employment_type + ', Income: ' + customerData.monthly_income + ' SEK, Since: ' + customerData.employment_start;\n}\n\nreturn [{ json: { ...prevData, customerData, customerContext, customerFound: customerData !== null, customerName: customerData ? customerData.full_name : null } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1040,
+        96
+      ],
+      "id": "8c730f82-8b06-4568-b78f-9f8e3cd7cfcc",
+      "name": "Prepare Context"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst isDocUpload = data.message === '__DOCUMENT_UPLOAD__';\nconst doc = data.document || null;\n\n// Sanitize chat history — strip any messages with array content (prior doc uploads)\n// Only keep plain text messages to avoid confusing Claude\nconst msgs = (data.chatHistory || [])\n  .filter(m => typeof m.content === 'string' && m.content.trim() !== '')\n  .slice(-6);\n\nconst benefitType = data.benefitType || 'carrier';\n\n// ── System prompts per benefit ────────────────────────────\nconst BENEFIT_PROMPTS = {\n\n  carrier: `You are an AI caseworker for Framtidskassan (a student prototype) processing carrier allowance (smittbärarpennning) applications. Always respond in English. Be professional and friendly.\n\nBENEFIT: Carrier allowance (Smittbärarpennning)\nLEGAL BASIS: Socialförsäkringsbalken 46 kap. The customer must be a confirmed or suspected carrier of an infectious disease, prohibited from working by an infection control doctor or public health authority.\n\nFollow EXACTLY these steps. Ask ONE section at a time. Wait for answer before moving to next step.\n\nSTEP 1 - IDENTITY & CONTACT:\nGreet the customer. Confirm from system: full name, personnummer, email, phone.\nAsk them to confirm these details are correct.\nDo NOT proceed until confirmed.\n\nSTEP 2 - WORK & INCOME:\nAsk: employer name, employment type (permanent/temporary/hourly/self-employed), employment start date, monthly income in SEK, income loss period (start and end date).\nAsk: \"Do you have an employer certificate or payslip ready to upload?\"\nDo NOT proceed until all details provided.\n\nSTEP 3 - CAUSE & CARRIER STATUS:\nAsk: which infection or suspicion (e.g. COVID-19), who recommended not working (infection control doctor/healthcare provider/employer), exact date of recommendation.\nAsk: \"Do you have a certificate from infection control or your doctor ready?\"\nValidate dates for consistency. Do NOT proceed until complete.\n\nSTEP 4 - DOCUMENT UPLOAD:\nSay: \"Thank you. Now please upload your supporting documents using the paperclip button:\n1. Medical certificate (from your doctor confirming carrier status and dates)\n2. Employer certificate (confirming income loss)\"\nWait for BOTH documents before proceeding.\n\nSTEP 5 - DOCUMENT VALIDATION (CRITICAL):\nWhen you receive a document for validation, you will see the full text content of the PDF.\nYou MUST carefully read every field and validate:\n\nFOR MEDICAL CERTIFICATE - check ALL of these:\n- Patient full name matches the applicant name from system\n- Patient personnummer matches ${data.customerContext ? data.customerContext.match(/ID: ([0-9-]+)/)?.[1] || 'the applicant' : 'the applicant'}\n- Diagnosis confirms carrier/infection status (must be a real infection)\n- Recommended absence period COVERS the income loss period stated by customer\n- Document is signed by a doctor, infection control physician, or authorized healthcare provider\n- Document has a date of issue\nIf ANY field is missing, wrong, or inconsistent: clearly state EXACTLY what is wrong and ask for a correct document. Do NOT proceed.\n\nFOR EMPLOYER CERTIFICATE - check ALL of these:\n- Employee full name matches the applicant\n- Employee personnummer matches\n- Employer name is present\n- Organization number (org nr) is present and correctly formatted (XXXXXX-XXXX)\n- Monthly salary matches what customer stated\n- Employment type matches (permanent/temporary etc.)\n- The certificate covers the income loss period\nIf ANY field is missing, wrong, or inconsistent: clearly state EXACTLY what is wrong. Do NOT proceed.\n\nSTEP 6 - COMPLETE (only when ALL steps done and BOTH documents fully validated):\nSay EXACTLY: \"Your application is complete. I am now sending it to a caseworker for review.\"\nThen provide full structured summary:\n- APPLICANT: name, ID, email, phone\n- EMPLOYMENT: employer, type, income, loss period\n- CARRIER STATUS: infection, recommender, date\n- DOCUMENTS: medical cert status, employer cert status\n- VALIDATION: any issues found or \"All validated successfully\"\n\n${data.customerContext || ''}`,\n\n  sick: `You are an AI caseworker for Framtidskassan (a student prototype) processing sick pay (sjukpenning) applications. Always respond in English. Be professional and friendly.\n\nBENEFIT: Sick pay (Sjukpenning)\nLEGAL BASIS: Socialförsäkringsbalken 27 kap. Medical certificate required from day 8. Work capacity reduced by at least 25%.\n\nFollow EXACTLY these steps. Ask ONE section at a time.\n\nSTEP 1 - IDENTITY & CONTACT: Confirm full name, personnummer, email, phone from system.\nSTEP 2 - EMPLOYMENT & INCOME: Employer, employment type, start date, monthly income, sick leave period.\nSTEP 3 - MEDICAL SITUATION: Diagnosis type, treating doctor, illness start date, expected recovery.\nSTEP 4 - DOCUMENT UPLOAD: Medical certificate (läkarintyg) + employer confirmation.\nSTEP 5 - DOCUMENT VALIDATION (CRITICAL): Read document carefully. Validate name, personnummer, dates, diagnosis, doctor signature. Flag ANY mismatch.\nSTEP 6 - COMPLETE: Say EXACTLY \"Your application is complete. I am now sending it to a caseworker for review.\"\n\n${data.customerContext || ''}`,\n\n  parental: `You are an AI caseworker for Framtidskassan (a student prototype) processing parental leave (föräldrapenning) applications. Always respond in English.\n\nBENEFIT: Parental leave (Föräldrapenning) - 480 days per child, SFB 12 kap.\n\nSTEP 1 - IDENTITY & CONTACT: Confirm details from system.\nSTEP 2 - CHILD INFORMATION: Date of birth, child personnummer, other parent's personnummer.\nSTEP 3 - LEAVE PERIOD: Start/end dates, full-time or part-time.\nSTEP 4 - EMPLOYMENT: Employer, income, employment type.\nSTEP 5 - DOCUMENT UPLOAD: Birth certificate + employer confirmation.\nSTEP 5 - DOCUMENT VALIDATION (CRITICAL): Read document. Validate all fields. Flag mismatches.\nSTEP 6 - COMPLETE: Say EXACTLY \"Your application is complete. I am now sending it to a caseworker for review.\"\n\n${data.customerContext || ''}`,\n\n  disability: `You are an AI caseworker for Framtidskassan (a student prototype) processing Disability Allowance (Sjukersättning) applications. Always respond in English.\n\nBENEFIT: Disability Allowance (Sjukersättning) - SFB 33 kap. For individuals whose work capacity is permanently reduced due to illness or disability.\n\nSTEP 1 - IDENTITY & CONTACT: Confirm details from system.\nSTEP 2 - BACKGROUND: Current situation, and how long the work capacity has been reduced.\nSTEP 3 - MEDICAL: Nature of the permanent disability or illness, and healthcare providers involved.\nSTEP 4 - REHABILITATION: Ask what medical or vocational rehabilitation has been tried to improve work capacity.\nSTEP 5 - DOCUMENT UPLOAD: Comprehensive Medical Statement (Läkarutlåtande) detailing the permanent disability.\nSTEP 5 - DOCUMENT VALIDATION (CRITICAL): Read document. Validate all fields including diagnosis, and that the doctor states the work capacity is permanently reduced. Flag mismatches.\nSTEP 6 - COMPLETE: Say EXACTLY \"Your application is complete. I am now sending it to a caseworker for review.\"\n\n${data.customerContext || ''}`,\n\n  vab: `You are an AI caseworker for Framtidskassan (a student prototype) processing Care of Child (VAB) applications. Always respond in English.\n\nBENEFIT: Care of Child (VAB / Tillfällig föräldrapenning) - SFB 13 kap. \n\nSTEP 1 - IDENTITY & CONTACT: Confirm applicant details from system.\nSTEP 2 - CHILD INFORMATION: Child's name, child's personnummer, child's symptoms/reason for staying home.\nSTEP 3 - ABSENCE & INCOME: Employer name, normal working hours, dates of absence, exact hours missed.\nSTEP 4 - DOCUMENT UPLOAD: If absent more than 7 days, ask for a Medical Certificate for the child. Otherwise, ask for an Employer Certificate confirming the absence.\nSTEP 5 - DOCUMENT VALIDATION (CRITICAL): Read uploaded documents. Validate names, dates, and hours missed. Flag any mismatches.\nSTEP 6 - COMPLETE: Say EXACTLY \"Your application is complete. I am now sending it to a caseworker for review.\"\n\n${data.customerContext || ''}`,\n\n  housing: `You are an AI caseworker for Framtidskassan (a student prototype) processing Housing Allowance (Bostadsbidrag) applications. Always respond in English.\n\nBENEFIT: Housing Allowance (Bostadsbidrag) - SFB 96 kap.\n\nSTEP 1 - IDENTITY & CONTACT: Confirm details from system.\nSTEP 2 - HOUSEHOLD: Ask if they live alone, with a partner, and if they have children living with them.\nSTEP 3 - HOUSING & INCOME: Ask for exact monthly rent, size of apartment (sq meters), and estimated total annual income.\nSTEP 4 - DOCUMENT UPLOAD: Ask them to upload their Rental Agreement (Hyresavtal) and latest payslip or proof of income.\nSTEP 5 - DOCUMENT VALIDATION (CRITICAL): Read documents. Ensure the name on the rental agreement matches the applicant, validate the rent amount, and check the income proof.\nSTEP 6 - COMPLETE: Say EXACTLY \"Your application is complete. I am now sending it to a caseworker for review.\"\n\n${data.customerContext || ''}`,\n\n  pregnancy: `You are an AI caseworker for Framtidskassan (a student prototype) processing Pregnancy Benefit (Graviditetspenning) applications. Always respond in English.\n\nBENEFIT: Pregnancy Benefit (Graviditetspenning) - SFB 10 kap.\n\nSTEP 1 - IDENTITY & CONTACT: Confirm details from system.\nSTEP 2 - PREGNANCY DETAILS: Ask for the expected due date (beräknat förlossningsdatum).\nSTEP 3 - WORK ENVIRONMENT: Ask why they cannot work (heavy lifting, risky environment) and if the employer has tried to reassign them to lighter duties.\nSTEP 4 - DOCUMENT UPLOAD: Ask for the Maternal Care Certificate (Moderskapsintyg) and the Employer's Statement (Arbetsgivarutlåtande).\nSTEP 5 - DOCUMENT VALIDATION (CRITICAL): Validate the expected due date on the medical certificate and ensure the employer statement confirms inability to reassign.\nSTEP 6 - COMPLETE: Say EXACTLY \"Your application is complete. I am now sending it to a caseworker for review.\"\n\n${data.customerContext || ''}`,\n\n  dental: `You are an AI caseworker for Framtidskassan (a student prototype) processing Special Dental Care Grant applications. Always respond in English.\n\nBENEFIT: Special Dental Care Grant (Särskilt tandvårdsbidrag) - SFB 74 kap.\n\nSTEP 1 - IDENTITY & CONTACT: Confirm details from system.\nSTEP 2 - MEDICAL CONDITION: Ask what underlying disease or disability causes their dental issues.\nSTEP 3 - TREATMENT: Ask what specific dental treatment is needed.\nSTEP 4 - DOCUMENT UPLOAD: Ask for a Medical Certificate confirming the underlying illness/disability and the Dentist's cost estimate.\nSTEP 5 - DOCUMENT VALIDATION (CRITICAL): Validate the medical diagnosis matches the claim and review the dentist's documentation.\nSTEP 6 - COMPLETE: Say EXACTLY \"Your application is complete. I am now sending it to a caseworker for review.\"\n\n${data.customerContext || ''}`\n};\n\nconst sys = BENEFIT_PROMPTS[benefitType] || BENEFIT_PROMPTS.carrier;\n\n// ── Build messages array ──────────────────────────────────\nlet messages;\n\nif (isDocUpload && doc && doc.base64) {\n  // Real document upload — send PDF/image to Claude for actual reading\n  const docLabel = doc.docType === 'medical' ? 'MEDICAL CERTIFICATE' : 'EMPLOYER/OTHER CERTIFICATE';\n  \n  const userContent = [\n    {\n      type: 'document',\n      source: {\n        type: 'base64',\n        media_type: doc.mimeType && doc.mimeType.includes('pdf') ? 'application/pdf' : (doc.mimeType || 'application/pdf'),\n        data: doc.base64\n      }\n    },\n    {\n      type: 'text',\n      text: `I am uploading my ${docLabel} (filename: ${doc.filename || 'document'}). Please read the FULL content of this document carefully and validate every field against my application details. Check: name, personnummer, dates, diagnosis/employer details, signatures, and whether the document covers the required period. Report exactly what you found and whether it is valid or not.`\n    }\n  ];\n  \n  msgs.push({ role: 'user', content: userContent });\n  messages = msgs;\n} else {\n  // Normal text message\n  msgs.push({ role: 'user', content: data.message || 'Hello' });\n  messages = msgs;\n}\n\nreturn [{ json: {\n  personnummer: data.personnummer,\n  sessionId: data.sessionId,\n  customerData: data.customerData,\n  customerFound: data.customerFound,\n  customerName: data.customerName,\n  benefitType: benefitType,\n  messages: messages,\n  systemPrompt: sys,\n  chatHistory: data.chatHistory,\n  isDocUpload: isDocUpload\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -832,
+        96
+      ],
+      "id": "eac6ce8b-e485-42f1-bd70-6786447daa43",
+      "name": "Build Claude Request"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "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"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"model\": \"claude-haiku-4-5-20251001\", \"max_tokens\": 600, \"system\": $json.systemPrompt, \"messages\": $json.messages } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -624,
+        96
+      ],
+      "id": "234b896c-4f35-4ef6-90b2-46fbee88c9ed",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const claudeResponse = $input.first().json;\nconst prevData = $('Build Claude Request').first().json;\n\nconst agentMessage = claudeResponse.content[0].text;\nconst updatedHistory = prevData.messages.concat([{ role: 'assistant', content: agentMessage }]);\n\nconst msg = agentMessage.toLowerCase();\nconst isComplete = msg.indexOf('your application is complete. i am now sending it to a caseworker for review') > -1;\n\n// Extract a short summary line for the document bubble in the frontend\n// Pull out key validated fields from the agent's response\nlet extractedSummary = '';\nif (prevData.isDocUpload) {\n  const lines = agentMessage.split('\\n').filter(l => l.trim());\n  // Find lines that contain validation info (names, dates, diagnoses)\n  const summaryLines = lines.filter(l =>\n    l.includes('✓') || l.includes('name') || l.includes('Name') ||\n    l.includes('valid') || l.includes('confirmed') || l.includes('match')\n  ).slice(0, 2);\n  extractedSummary = summaryLines.join(' · ').replace(/[*#]/g, '').trim().substring(0, 120);\n}\n\nreturn [{ json: {\n  reply: agentMessage,\n  chatHistory: updatedHistory,\n  sessionId: prevData.sessionId,\n  customerData: prevData.customerData,\n  customerFound: prevData.customerFound,\n  customerName: prevData.customerName,\n  isComplete: isComplete,\n  personnummer: prevData.personnummer,\n  benefitType: prevData.benefitType,\n  extractedSummary: extractedSummary\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        96
+      ],
+      "id": "b7855c0c-b3ed-4946-bf5d-6675ce1c6f58",
+      "name": "Process Response"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5ca17e5c-6c8e-46fa-9fc7-a6933037d724",
+              "leftValue": "={{ $json.isComplete }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -208,
+        96
+      ],
+      "id": "c0c4d3e8-130d-491e-b130-4009a506ee71",
+      "name": "Is Application Complete?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://kmgyuwmixsdxtpxorrzc.supabase.co/rest/v1/applications",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttZ3l1d21peHNkeHRweG9ycnpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2ODkzNjQsImV4cCI6MjA5MDI2NTM2NH0.y9D9WTdSHnfRZ4MdJU8Lw0Wvgr5je1NH7Kr5Es9558Q"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttZ3l1d21peHNkeHRweG9ycnpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2ODkzNjQsImV4cCI6MjA5MDI2NTM2NH0.y9D9WTdSHnfRZ4MdJU8Lw0Wvgr5je1NH7Kr5Es9558Q"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ personnummer: $json.personnummer, status: \"pending_review\", agent_assessment: $json.reply }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "5d015595-b2ac-4d43-9300-45600166d07d",
+      "name": "Save Application"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=={{ JSON.stringify({reply: \"Your application is complete. I am now sending it to a caseworker for review.\", isComplete: true, personnummer: $json.personnummer, benefitType: $json.benefitType}) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        208,
+        0
+      ],
+      "id": "3f04c7e2-488b-434a-aaac-d680865726e5",
+      "name": "Respond Complete"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { reply: $json.reply, chatHistory: $json.chatHistory, sessionId: $json.sessionId, customerFound: $json.customerFound, customerName: $json.customerName, isComplete: false, benefitType: $json.benefitType, extractedSummary: $json.extractedSummary } }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        192
+      ],
+      "id": "25144635-a7eb-41e8-b5e2-62ffa305c0e5",
+      "name": "Respond Continue"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Parse Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Input": {
+      "main": [
+        [
+          {
+            "node": "Fetch Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Customer": {
+      "main": [
+        [
+          {
+            "node": "Prepare Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Context": {
+      "main": [
+        [
+          {
+            "node": "Build Claude Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Claude Request": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Process Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Response": {
+      "main": [
+        [
+          {
+            "node": "Is Application Complete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Application Complete?": {
+      "main": [
+        [
+          {
+            "node": "Save Application",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Continue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Application": {
+      "main": [
+        [
+          {
+            "node": "Respond Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "315b3063-4c5f-4bf7-b9ac-12935710f5c4",
+  "meta": {
+    "instanceId": "2f85424d79dfc32b2c3c7ba3b0deb3050825f55f17e63ca4950e238b7e9941aa"
+  },
+  "id": "xjCKUnwud7IjPfXe",
+  "tags": []
+}
